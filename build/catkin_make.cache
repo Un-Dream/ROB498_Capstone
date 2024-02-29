@@ -1,0 +1,2 @@
+
+-DCATKIN_DEVEL_PREFIX=/home/jetson/ROB498_FlightExercises/devel -DCMAKE_INSTALL_PREFIX=/home/jetson/ROB498_FlightExercises/install -G Unix Makefiles

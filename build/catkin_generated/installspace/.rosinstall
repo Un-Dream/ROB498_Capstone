@@ -1,0 +1,2 @@
+- setup-file:
+    local-name: /home/jetson/ROB498_FlightExercises/install/setup.sh
