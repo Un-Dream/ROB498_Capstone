@@ -35,3 +35,11 @@
 /home/jetson/ROB498_FlightExercises/build/gtest/googletest/CMakeFiles/test.dir
 /home/jetson/ROB498_FlightExercises/build/gtest/googletest/CMakeFiles/gtest_main.dir
 /home/jetson/ROB498_FlightExercises/build/gtest/googletest/CMakeFiles/gtest.dir
+/home/jetson/ROB498_FlightExercises/build/flight/CMakeFiles/install/strip.dir
+/home/jetson/ROB498_FlightExercises/build/flight/CMakeFiles/install/local.dir
+/home/jetson/ROB498_FlightExercises/build/flight/CMakeFiles/install.dir
+/home/jetson/ROB498_FlightExercises/build/flight/CMakeFiles/list_install_components.dir
+/home/jetson/ROB498_FlightExercises/build/flight/CMakeFiles/rebuild_cache.dir
+/home/jetson/ROB498_FlightExercises/build/flight/CMakeFiles/edit_cache.dir
+/home/jetson/ROB498_FlightExercises/build/flight/CMakeFiles/test.dir
+/home/jetson/ROB498_FlightExercises/build/flight/CMakeFiles/_catkin_empty_exported_target.dir
