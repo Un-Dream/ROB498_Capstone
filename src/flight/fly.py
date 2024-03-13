@@ -21,8 +21,10 @@ class Controller:
         # create sub and pub
         self.pub = rospy.Publisher('/mavros/setpoint_position/local', PoseStamped, queue_size = 10)
         self.odompub = rospy.Publisher('/mavros/odometry/out', Odometry, queue_size = 10)
-        self.sub = rospy.Subscriber('/mavros/local_position/pose', PoseStamped, self.position_callback)
+        # self.sub = rospy.Subscriber('/mavros/local_position/pose', PoseStamped, self.position_callback)
         self.rate = rospy.Rate(60) #10 Hz
+
+        self.vicon = rospy.Subscriber('/vicon/ROB498_Drone/ROB498_Drone', PoseStamped, self.position_callback)
         
         self.state = State()
         rospy.wait_for_service("mavros/set_mode")              
