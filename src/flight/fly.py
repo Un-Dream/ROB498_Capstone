@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 import math
-
+import tf
 import rospy
 import mavros_msgs
 
@@ -37,7 +37,6 @@ class Controller:
             offboard_req.custom_mode = "OFFBOARD"
             self.set_mode_client(offboard_req)
 
-
         rospy.wait_for_service("mavros/cmd/arming")
         self.arming_client = rospy.ServiceProxy("mavros/cmd/arming", CommandBool)
         self.if_armed = False
@@ -49,6 +48,41 @@ class Controller:
         self.start_pose  = self.curr_position
         rospy.loginfo(self.start_pose)
         rospy.loginfo('here')
+
+        self.add_transform() # run before flight
+
+
+
+    def add_transform(self):
+        # run this before flight
+        # add transform of original pose 
+
+        # self. current pose and camera coords
+        trans = None # (0, 0, 0), #camera coords - the imu
+        rot = None # (orientation.x, orientation.y, orientation.z, orientation.w)
+
+        child_frame_id = "/camera"
+        parent_frame_id = "/imu"
+
+        br = tf.TransformBroadcaster()
+        br.sendTransform(trans,
+                     rot,
+                     rospy.Time.now(),
+                     child_frame_id,
+                    parent_frame_id)
+
+    def get_transform(self):
+        # translation and rotation
+        child_frame_id = "/camera"
+        parent_frame_id = "/imu"
+
+        listener = tf.TransformListener()
+        try:
+            (trans, rot) = listener.lookupTransform(parent_frame_id, child_frame_id, rospy.Time(0))
+            print("Translation:", trans)
+            print("Rotation:", rot)
+        except (tf.LookupException, tf.ConnectivityException, tf.ExtrapolationException):
+            continue
 
     def position_callback(self, msg):
         # update current position
