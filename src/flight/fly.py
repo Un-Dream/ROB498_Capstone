@@ -13,8 +13,6 @@ from nav_msgs.msg import Odometry
 from geometry_msgs.msg import PoseStamped
 from std_msgs.msg import Header
 
-
-
 class Controller:
     def __init__(self):
         rospy.init_node('fly', anonymous = True)
@@ -72,13 +70,6 @@ class Controller:
         # # self.add_transform() # run before flight
 
         rospy.loginfo("finish startup")
-
-    
-
-            
-
-
-
 
 
 
@@ -178,59 +169,37 @@ class Controller:
 
 
 
-    def run(self):
-        rate = rospy.Rate(60)
-        # rospy.spin()
-        goal_point = self.goal_point
+    def flight_exercise_2(self, goal_point):
+        self.control_mode = "FLY" # start in this mode
+        start_time = None
         error = 1000
-        # base_error = 1000
-        while not rospy.is_shutdown():
-
+        base_error = 1000
+        
+         while not rospy.is_shutdown():
             if self.control_mode == "FLY":
                 rospy.loginfo("Flying towards point")
-
-                # rospy.loginfo("Flying towards point")
-                # rospy.loginfo("Current pose: %s", controller.camera_pose)
-                controller.set_position(goal_point)
-                error = controller.tolerance_error(goal_point)
-                start_time = time.time()
+                self.set_position(goal_point)
+                error = self.tolerance_error(goal_point)
                 rate.sleep()
-
                 if error < 0.05:
                     self.control_mode = "HOVER"
-            
-            # init_t = rospy.Time.now()
-            if self.control_mode == "HOVER":
+                    start_time = time.time()
+            elif self.control_mode == "HOVER":
                 rospy.loginfo("hover")
-                # rospy.loginfo("Current pose: %s", controller.curr_position)
-                controller.set_position(goal_point)
-                # rospy.loginfo("Current pose: %s", controller.curr_position)
+                self.set_position(goal_point)
                 rate.sleep()
-
                 if time.time() - start_time > 10:
                     self.control_mode = "RETURN"
-
-
-
-            if self.control_mode == "RETURN":
+            elif self.control_mode == "RETURN":
                 rospy.loginfo("fly home")
-
-                controller.fly_to_base()
-                base_error = controller.tolerance_error([controller.start_pose.x, controller.start_pose.y, controller.start_pose.z])
-                rospy.loginfo("Current pose: %s", controller.camera_pose)
-
+                self.set_position([self.start_pose.x, self.start_pose.y, self.start_pose.z])
+                base_error = self.tolerance_error([self.start_pose.x, self.start_pose.y, self.start_pose.z])
                 rate.sleep()
                 if base_error < 0.05:
                     self.control_mode = "END"
-
-
-            if self.control_mode == "END":
+            elif self.control_mode == "END":
                 rospy.loginfo("end")
-
                 rospy.spin()
-
-
-            rate.sleep()
 
 
             
@@ -259,3 +228,8 @@ if __name__  == "__main__":
 
     except rospy.ROSInterruptException:
         pass
+
+
+
+
+    
