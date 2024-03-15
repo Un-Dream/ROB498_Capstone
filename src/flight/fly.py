@@ -4,6 +4,7 @@ import math
 import tf
 import rospy
 import mavros_msgs
+import time
 
 from mavros_msgs.msg import State
 from mavros_msgs.srv import SetMode, CommandBool, CommandBoolRequest, SetModeRequest
@@ -16,21 +17,38 @@ from std_msgs.msg import Header
 
 class Controller:
     def __init__(self):
-        self.curr_position = None
         rospy.init_node('fly', anonymous = True)
-        # create sub and pub
-        self.pub = rospy.Publisher('/mavros/setpoint_position/local', PoseStamped, queue_size = 10)
-        self.odompub = rospy.Publisher('/mavros/odometry/out', Odometry, queue_size = 10)
-        # self.sub = rospy.Subscriber('/mavros/local_position/pose', PoseStamped, self.position_callback)
-        self.rate = rospy.Rate(60) #10 Hz
+        # self.rate = rospy.Rate(60) #10 Hz # TODO assign a callback, in that callback publish waypoint constantly at that rate, check mode at the same time
+        # don't pub odom in that topic
+        # basically move set point out of our loop into the rate loop
+        
 
+        # creating publishers and subcribers
+
+        # mavros / imu data
+        self.pub = rospy.Publisher('/mavros/setpoint_position/local', PoseStamped, queue_size = 10)
+        self.sub = rospy.Subscriber('/mavros/local_position/pose', PoseStamped, self.position_callback)
+        self.odompub = rospy.Publisher('/mavros/odometry/out', Odometry, queue_size = 10)
+        
+        # vicon
         self.vicon = rospy.Subscriber('/vicon/ROB498_Drone/ROB498_Drone', PoseStamped, self.position_callback)
+
+        # camera
+        rospy.loginfo('camera')
+        self.camera = rospy.Subscriber('/camera/odom/sample', Odometry, self.camera_callback)
+        
+
+        # Internal variables
+        self.camera_pose = None
+        self.camera_data_full = None
+        self.curr_position = None
         
         self.state = State()
+        rospy.loginfo('end')
         rospy.wait_for_service("mavros/set_mode")              
         self.set_mode_client = rospy.ServiceProxy("/mavros/set_mode", SetMode)
         self.state_sub = rospy.Subscriber("/mavros/state", State, self.state_callback) 
-
+        rospy.loginfo('off')
         while self.state.mode != "OFFBOARD":
             rospy.loginfo("switch offboard")
             offboard_req = SetModeRequest()
@@ -41,28 +59,54 @@ class Controller:
         self.arming_client = rospy.ServiceProxy("mavros/cmd/arming", CommandBool)
         self.if_armed = False
 
-        rospy.loginfo("arm")
+        # initialize start pose for drone
+        while (self.camera_pose is None):
+            rospy.loginfo("Waiting for init pose")
+            pass
+        self.start_pose  = self.camera_pose
+        
 
-        self.rate.sleep()
+        # # TODO add transforms
+        # # self.add_transform() # run before flight
 
-        self.start_pose  = self.curr_position
-        rospy.loginfo(self.start_pose)
-        rospy.loginfo('here')
+        rospy.loginfo("finish startup")
 
-        self.add_transform() # run before flight
+    
+
+            
 
 
+
+
+
+
+    def camera_callback(self, msg):
+        self.camera_data_full = msg
+        self.camera_pose = msg.pose.pose.position
+        odom_msg = Odometry()
+        odom_msg.header.stamp = rospy.Time.now()
+        odom_msg.header.frame_id = 'odom'
+        odom_msg.child_frame_id = 'base_link'
+        odom_msg.pose.pose.position.x = msg.pose.pose.position.x
+        odom_msg.pose.pose.position.y = msg.pose.pose.position.y
+        odom_msg.pose.pose.position.z = msg.pose.pose.position.z
+        odom_msg.pose.pose.orientation.x = msg.pose.pose.orientation.x
+        odom_msg.pose.pose.orientation.y = msg.pose.pose.orientation.y
+        odom_msg.pose.pose.orientation.z = msg.pose.pose.orientation.z
+        odom_msg.pose.pose.orientation.w = msg.pose.pose.orientation.w
+        self.odompub.publish(odom_msg)
 
     def add_transform(self):
         # run this before flight
         # add transform of original pose 
 
         # self. current pose and camera coords
-        trans = None # (0, 0, 0), #camera coords - the imu
-        rot = None # (orientation.x, orientation.y, orientation.z, orientation.w)
+        trans = (0,2,0) #None # (0, 0, 0), #camera coords - the imu
+        # IN QUATERNION BTW
+        rot = (0,0,0,1) #None # (orientation.x, orientation.y, orientation.z, orientation.w)
 
-        child_frame_id = "/camera"
-        parent_frame_id = "/imu"
+        child_frame_id = "camera"
+        parent_frame_id = "imu"
 
         br = tf.TransformBroadcaster()
         br.sendTransform(trans,
@@ -71,18 +115,19 @@ class Controller:
                      child_frame_id,
                     parent_frame_id)
 
+        rospy.loginfo("added")
+
     def get_transform(self):
         # translation and rotation
         child_frame_id = "/camera"
         parent_frame_id = "/imu"
-
         listener = tf.TransformListener()
-        try:
-            (trans, rot) = listener.lookupTransform(parent_frame_id, child_frame_id, rospy.Time(0))
-            print("Translation:", trans)
-            print("Rotation:", rot)
-        except (tf.LookupException, tf.ConnectivityException, tf.ExtrapolationException):
-            continue
+        # try:
+        (trans, rot) = listener.lookupTransform(parent_frame_id, child_frame_id, rospy.Time(0))
+        print("Translation:", trans)
+        print("Rotation:", rot)
+        # except (tf.LookupException, tf.ConnectivityException, tf.ExtrapolationException):
+        #     continue
 
     def position_callback(self, msg):
         # update current position
@@ -92,6 +137,7 @@ class Controller:
         self.state = state
 
     def fly_to_base(self):
+        # send to local position so PoseStamped data type
         position_msg = PoseStamped()
         position_msg.header = Header()
         position_msg.header.stamp = rospy.Time.now()
@@ -110,21 +156,8 @@ class Controller:
             else:
                 rospy.loginfo(response)
 
-        self.rate.sleep()
+        # self.rate.sleep()
         
-        odom_msg = Odometry()
-        odom_msg.header.stamp = rospy.Time.now()
-        odom_msg.header.frame_id = 'odom'
-        odom_msg.child_frame_id = 'base_link'
-        odom_msg.pose.pose.position.x = position[0]
-        odom_msg.pose.pose.position.y = position[1]
-        odom_msg.pose.pose.position.z = position[2]
-        odom_msg.pose.pose.orientation.x = 0
-        odom_msg.pose.pose.orientation.y = 0
-        odom_msg.pose.pose.orientation.z = 0
-        odom_msg.pose.pose.orientation.w = 1
-        self.odompub.publish(odom_msg)
-
         position_msg = PoseStamped()
         position_msg.header = Header()
         position_msg.header.stamp = rospy.Time.now()
@@ -134,44 +167,65 @@ class Controller:
         self.pub.publish(position_msg)
 
     def tolerance_error(self, goal_point):
-        error = ((self.curr_position.x - goal_point[0]) ** 2 + (self.curr_position.y - goal_point[1]) **2 + (self.curr_position.z - goal_point[2])**2)**0.5
+        error = ((self.camera_pose.x - goal_point[0]) ** 2 + (self.camera_pose.y - goal_point[1]) **2 + (self.camera_pose.z - goal_point[2])**2)**0.5
+        
+        
         return error
 
-            
 
 
-if __name__ == "__main__":
-    try: 
-        controller = Controller()
-        goal_point = [0, 0, controller.start_pose.z+0.75]
-        
+
+    def run(self):
+        rate = rospy.Rate(60)
+        # rospy.spin()
+        goal_point = self.goal_point
         error = 1000
-        base_error = 1000
+        # base_error = 1000
         while not rospy.is_shutdown():
             rospy.loginfo("Flying towards point")
-            while error > 0.5:
+            while error > 0.1:
                 # rospy.loginfo("Flying towards point")
-                rospy.loginfo("Current pose: %s", controller.curr_position)
+                rospy.loginfo("Current pose: %s", controller.camera_pose)
                 controller.set_position(goal_point)
                 error = controller.tolerance_error(goal_point)
+
+                rate.sleep()
             
-            time = 0
+            start_time = time.time()
             init_t = rospy.Time.now()
             rospy.loginfo("hover")
-            while time < 20000:
-                time = time + 1
-                rospy.loginfo("Current pose: %s", controller.curr_position)
+            while time < 10:
+                time = time.time() - start_time
+                # rospy.loginfo("Current pose: %s", controller.curr_position)
                 controller.set_position(goal_point)
                 # rospy.loginfo("Current pose: %s", controller.curr_position)
+                rate.sleep()
 
             rospy.loginfo("fly home")
 
             while base_error > 0.5:
                 controller.fly_to_base()
                 base_error = controller.tolerance_error([controller.start_pose.x, controller.start_pose.y, controller.start_pose.z])
-                rospy.loginfo("Current pose: %s", controller.curr_position)
+                rospy.loginfo("Current pose: %s", controller.camera_pose)
 
-            rospy.loginfo('done')
+                rate.sleep()
+        # rospy.spin()
+      
+
+
+if __name__  == "__main__":
+    try: 
+
+        # controller = Controller()
+        # while True:
+        #     controller.add_transform()
+
+        #     pass
+        # controller.get_transform()
+        controller = Controller()
+        controller.goal_point = [0, 0, controller.start_pose.z+0.75]
+        controller.run()
+
             
 
 
