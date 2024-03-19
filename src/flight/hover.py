@@ -11,7 +11,7 @@ from mavros_msgs.msg import State
 from mavros_msgs.srv import SetMode, CommandBool, CommandBoolRequest, SetModeRequest
 from nav_msgs.msg import Odometry
 
-from geometry_msgs.msg import PoseStamped
+from geometry_msgs.msg import PoseStamped, TransformStamped
 from std_msgs.msg import Header
 from std_srvs.srv import Empty, EmptyResponse
 
@@ -31,7 +31,8 @@ class Controller:
         self.camera_odom = rospy.Subscriber('/camera/odom/sample', Odometry, self.camera_callback)
 
         # TODO -> vicon data feeds into what?
-        self.vicon = rospy.Subscriber('/vicon/ROB498_Drone/ROB498_Drone', PoseStamped, self.vicon_callback)
+        
+        self.vicon = rospy.Subscriber('/vicon/ROB498_Drone/ROB498_Drone', TransformStamped, self.vicon_callback)
 
         # TODO -> have a trigger for camera pose on camera vs vicon
         # Internal variables
@@ -62,8 +63,9 @@ class Controller:
         while (self.camera_pose is None):
             rospy.loginfo("Waiting for init pose")
             pass
-        self.start_pose  = self.camera_pose
-        self.goal_point = [0, 0, self.start_pose.z+0.5]
+        self.start_pose  = None
+        self.goal_point = None
+        self.vicon_start_z = 0
 
         rospy.loginfo("finish startup")
 
@@ -95,26 +97,10 @@ class Controller:
 
     def vicon_callback(self, msg):
         # update current position
-        self.vicon_pose = msg.pose.position
-
-    def set_position(self, position):
-        if self.if_armed == False:
-            response = self.arming_client.call(True)
-            if response.success:
-                rospy.loginfo('success')
-                self.if_armed = True
-            else:
-                rospy.loginfo(response)
-
-        # self.rate.sleep()
-        
-        position_msg = PoseStamped()
-        position_msg.header = Header()
-        position_msg.header.stamp = rospy.Time.now()
-        position_msg.pose.position.x = position[0]
-        position_msg.pose.position.y = position[1]
-        position_msg.pose.position.z = position[2]
-        self.mavros_pub.publish(position_msg)    
+        try:
+            self.vicon_pose = msg.transform
+        except: 
+            rospy.loginfo('vicon callback error - no data')
 
 
     def tolerance_error(self, goal_point):
@@ -134,28 +120,36 @@ class Controller:
         position_msg = PoseStamped()
         position_msg.header = Header()
         position_msg.header.stamp = rospy.Time.now()
-        position_msg.pose.position.x = position[0]
-        position_msg.pose.position.y = position[1]
-        position_msg.pose.position.z = position[2]
+        position_msg.pose.pose.position.x = position[0]
+        position_msg.pose.pose.position.y = position[1]
+        position_msg.pose.pose.position.z = position[2]
         self.mavros_pub.publish(position_msg)
 
     # Callback handlers
-    def handle_launch():
+    def handle_launch(self):
         print('Launch Requested. Your drone should take off.')
         # FLY TO GOAL POINT
         self.control_mode = "FLY"
+        # self.start_pose = self.camera_pose
+        if self.vicon_pose is not None:
+            self.vicon_start_z = self.vicon_pose.translation.z   
+        else:
+            self.vicon_start_z = 0
 
-    def handle_test():
+        rospy.loginfo('START POSE %s', self.start_pose)
+        self.goal_point = [self.start_pose.x, self.start_pose.y, self.start_pose.z - self.vicon_start_z + 1.5]
+
+    def handle_test(self):
         print('Test Requested. Your drone should perform the required tasks. Recording starts now.')
         # # HOVER
         self.control_mode = "HOVER"
 
-    def handle_land():
+    def handle_land(self):
         print('Land Requested. Your drone should land.')
         # LAND AT START POSE
         self.control_mode = "LAND"
 
-    def handle_abort():
+    def handle_abort(self):
         print('Abort Requested. Your drone should land immediately due to safety considerations')
         # LAND AT CURRENT POSITION
         self.control_mode = "ABORT"
@@ -182,6 +176,9 @@ class Controller:
         start_time = None
         error = 1000
         base_error = 1000
+        self.start_pose = self.camera_pose
+        rospy.loginfo("start pose: %s", self.start_pose)
+        self.goal_point = [0, 0, self.start_pose.z+1.5]
         
         while not rospy.is_shutdown():
             if self.control_mode == "FLY":
@@ -211,15 +208,15 @@ class Controller:
 
     def flight_exercise_2_test(self):
         self.control_mode = "IDLE" # start in this mode
-        start_time = None
         base_error = 1000
 
         # SERVICE BASED TRIGGER
         while not rospy.is_shutdown():
             if self.control_mode == "FLY":
                 rospy.loginfo("Flying towards point")
+                rospy.loginfo("POSE %s", self.camera_pose.z)
+
                 self.set_position(self.goal_point)
-                error = self.tolerance_error(self.goal_point)
                 self.rate.sleep()
             elif self.control_mode == "HOVER":
                 rospy.loginfo("hover")
@@ -251,7 +248,7 @@ class Controller:
 if __name__  == "__main__":
     try: 
         controller = Controller()
-        controller.flight_exercise_2_auto()
+        controller.flight_exercise_2_test()
         
 
     except rospy.ROSInterruptException:
