@@ -196,9 +196,10 @@ class Controller:
             elif self.control_mode == "TASK":
                 rospy.loginfo("task")
                 if self.WP == None:
-                    self.control_mode = "FLY" # is this how we launch? 
+                    self.control_mode = "FLY"
                     rospy.loginfo("Flying towards point")
                     rospy.loginfo("POSE %s", self.camera_pose.z)
+                    #self.WP = WP1 do we know if advance or when TAs launce is it added to the queue?
                 else:
                     next_WP = self.WP_list()
                     self.mavros_pub.publish(next_WP)
