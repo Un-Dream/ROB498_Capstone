@@ -3,12 +3,13 @@ import tf
 import rospy
 import mavros_msgs
 import time
+import numpy as np
 
 from mavros_msgs.msg import State
 from mavros_msgs.srv import SetMode, CommandBool, CommandBoolRequest, SetModeRequest
 from nav_msgs.msg import Odometry
 
-from geometry_msgs.msg import PoseStamped, TransformStamped
+from geometry_msgs.msg import PoseStamped, TransformStamped, Pose, PoseArray
 from std_msgs.msg import Header
 from std_srvs.srv import Empty, EmptyResponse
 
@@ -24,21 +25,20 @@ class Controller:
         self.mavros_pub = rospy.Publisher('/mavros/setpoint_position/local', PoseStamped, queue_size = 10)
         self.mavros_odom = rospy.Publisher('/mavros/odometry/out', Odometry, queue_size = 10)
 
+        ### Subscriber Banks
         # camera data
-        self.camera_odom = rospy.Subscriber('/camera/odom/sample', Odometry, self.camera_callback)
-
-        
+        self.camera_odom = rospy.Subscriber('/camera/odom/sample', Odometry, self.camera_callback)        
         self.vicon = rospy.Subscriber('/vicon/ROB498_Drone/ROB498_Drone', TransformStamped, self.vicon_callback)
-
-
+        
         # Internal variables
         self.vicon_pose = None
         self.camera_pose = None
         self.camera_data_full = None
         self.curr_position = None
         self.control_mode = "IDLE"
-        self.WP = None
-        
+        self.waypoints = None
+        self.WAYPOINTS_RECEIVED = False
+        self.waypoint_curr = 0
 
         self.state = State()
         rospy.loginfo('end')
@@ -91,7 +91,6 @@ class Controller:
         odom_msg.pose.pose.orientation.w = msg.pose.pose.orientation.w
         self.mavros_odom.publish(odom_msg)
 
-
     def vicon_callback(self, msg):
         # update current position
         try:
@@ -99,12 +98,10 @@ class Controller:
         except: 
             rospy.loginfo('vicon callback error - no data')
 
-
     def tolerance_error(self, goal_point):
         # error = ((self.camera_pose.x - goal_point[0]) ** 2 + (self.camera_pose.y - goal_point[1]) **2 + (self.camera_pose.z - goal_point[2])**2)**0.5
         error = ((self.camera_pose.z - goal_point[2])**2)**0.5
         return error
-
 
     def set_position(self, position):
         if self.if_armed == False:
@@ -177,14 +174,51 @@ class Controller:
         self.handle_task()
         return EmptyResponse()
     
-    def WP_list(self): #ToDo
-        pass
+    def jiggle_generator(self, waypoints):
+        '''
+        Add jiggle points into original waypoints array Nx3
+        Output: jiggle_wps:
+                    np.array in 5Nx3
+                    [* * * * *
+                    * 4 * 3 *
+                    * * 2 * *
+                    * 1 * 5 *
+                    * * * * *]
+                    2 is the original wp
+        '''
+        jiggle_wps = np.empty((0,3))
+        jiggle_dis = 0.1 #meter
+        for i in range(np.shape(waypoints)[0]):
+            p_2 = waypoints[i]
+            jiggle_wps = np.vstack((jiggle_wps, [p_2[0]-jiggle_dis, p_2[1]-jiggle_dis, p_2[2]]))
+            jiggle_wps = np.vstack((jiggle_wps, p_2))
+            jiggle_wps = np.vstack((jiggle_wps, [p_2[0]+jiggle_dis, p_2[1]+jiggle_dis, p_2[2]]))
+            jiggle_wps = np.vstack((jiggle_wps, [p_2[0]-jiggle_dis, p_2[1]+jiggle_dis, p_2[2]]))
+            jiggle_wps = np.vstack((jiggle_wps, [p_2[0]+jiggle_dis, p_2[1]-jiggle_dis, p_2[2]]))
+        return jiggle_wps
 
+    def callback_waypoints(self, msg):
+        '''
+        Input: msg in PoseArray
+        Output:self.waypoints:
+                    np.array in Nx3; storing original WP from msg
+        '''
+        if self.WAYPOINTS_RECEIVED:
+            return
+        print('Waypoints Received')
+        self.WAYPOINTS_RECEIVED = True
+        self.waypoints = np.empty((0,3))
+        for pose in msg.poses:
+            pos = np.array([pose.position.x, pose.position.y, pose.position.z])
+            self.waypoints = np.vstack((self.waypoints, pos))
 
     def flight_exercise_3(self):
         self.control_mode = "IDLE" # start in this mode
         base_error = 1000
 
+        # waypoint subscribe
+        self.waypoints_sub = rospy.Subscriber(self.node_name + '/comm/waypoints', PoseArray, self.callback_waypoints)
+        self.waypoints = self.jiggle_generator(self.waypoints)
         # SERVICE BASED TRIGGER
         while not rospy.is_shutdown():
             if self.control_mode == "FLY":
@@ -193,17 +227,21 @@ class Controller:
 
                 self.set_position(self.goal_point)
                 self.rate.sleep()
+            
+            # For Task 3
             elif self.control_mode == "TASK":
                 rospy.loginfo("task")
-                if self.WP == None:
+                if self.waypoints == None:
                     self.control_mode = "FLY"
                     rospy.loginfo("Flying towards point")
                     rospy.loginfo("POSE %s", self.camera_pose.z)
                     #self.WP = WP1 do we know if advance or when TAs launce is it added to the queue?
                 else:
-                    next_WP = self.WP_list()
-                    self.mavros_pub.publish(next_WP)
-
+                    # curr_WP is 3x1 np.array
+                    curr_WP = self.waypoints[self.waypoint_curr,:]
+                    self.waypoint_curr += 1
+                    self.set_position(self, curr_WP)
+                
                 self.rate.sleep()
 
             elif self.control_mode == "LAND":
