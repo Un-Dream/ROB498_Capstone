@@ -29,6 +29,12 @@ class Controller:
         # camera data
         self.camera_odom = rospy.Subscriber('/camera/odom/sample', Odometry, self.camera_callback)        
         self.vicon = rospy.Subscriber('/vicon/ROB498_Drone/ROB498_Drone', TransformStamped, self.vicon_callback)
+
+        # waypoint subscribe
+        self.waypoints_sub = rospy.Subscriber('/start_pub_wpts_c3 05', PoseArray, self.callback_waypoints)
+        self.waypoints = self.jiggle_generator(self.waypoints)
+
+        self.queue = None
         
         # Internal variables
         self.vicon_pose = None
@@ -97,6 +103,12 @@ class Controller:
             self.vicon_pose = msg.transform
         except: 
             rospy.loginfo('vicon callback error - no data')
+
+    def waypoints_callback(self, msg):
+        self.waypoints_msg = msg
+
+        if (self.queue is None):
+            self.queue = self.waypoints_msg
 
     def tolerance_error(self, goal_point):
         # error = ((self.camera_pose.x - goal_point[0]) ** 2 + (self.camera_pose.y - goal_point[1]) **2 + (self.camera_pose.z - goal_point[2])**2)**0.5
@@ -216,9 +228,7 @@ class Controller:
         self.control_mode = "IDLE" # start in this mode
         base_error = 1000
 
-        # waypoint subscribe
-        self.waypoints_sub = rospy.Subscriber(self.node_name + '/comm/waypoints', PoseArray, self.callback_waypoints)
-        self.waypoints = self.jiggle_generator(self.waypoints)
+
         # SERVICE BASED TRIGGER
         while not rospy.is_shutdown():
             if self.control_mode == "FLY":
