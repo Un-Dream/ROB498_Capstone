@@ -7,7 +7,7 @@ def pose_array_publisher():
     rospy.init_node('pose_array_publisher', anonymous=True)
 
     # Create a publisher for the PoseArray topic
-    pose_array_pub = rospy.Publisher('/pose_array_topic', PoseArray, queue_size=10)
+    pose_array_pub = rospy.Publisher('/comm/dummy_waypoints', PoseArray, queue_size=10)
 
     # Set the loop rate (in Hz)
     rate = rospy.Rate(10)  # 10Hz
