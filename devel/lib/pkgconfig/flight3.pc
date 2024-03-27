@@ -1,0 +1,8 @@
+prefix=/home/jetson/ROB498_FlightExercises/devel
+
+Name: flight3
+Description: Description of flight3
+Version: 0.0.0
+Cflags: 
+Libs: -L${prefix}/lib 
+Requires: 

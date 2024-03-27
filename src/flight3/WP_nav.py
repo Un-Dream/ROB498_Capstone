@@ -238,22 +238,21 @@ class Controller:
                 self.rate.sleep()
             
             # For Task 3
-            elif self.control_mode == "TASK":
-                rospy.loginfo("task")
-                if self.waypoints == None:
-                    self.control_mode = "FLY"
-                    rospy.loginfo("Flying towards point")
-                    rospy.loginfo("POSE %s", self.camera_pose.z)
-                    #self.WP = WP1 do we know if advance or when TAs launce is it added to the queue?
-                else:
-                    # curr_WP is 1x3 np.array
-                    curr_WP = self.waypoints[self.waypoint_curr,:]
-                    self.set_position(self, curr_WP)
-                    # curr_pose = None #TODO: Do we need current position?
-                    base_error = self.tolerance_error(curr_WP) < 0.05 #TODO: Check what is the type and format of curr_wp need to be
-                    self.rate.sleep()
-                    if base_error < 0.05:
-                        self.waypoint_curr += 1
+            elif self.control_mode == "TEST":
+                rospy.loginfo("Testing now")
+
+                # TODO test this shit
+
+                # write control loop
+
+                # curr_WP is 1x3 np.array
+                curr_WP = self.waypoints[self.waypoint_curr,:]
+                self.set_position(self, curr_WP)
+                # curr_pose = None #TODO: Do we need current position?
+                base_error = self.tolerance_error(curr_WP)
+                self.rate.sleep()
+                if base_error < 0.05:
+                    self.waypoint_curr += 1
                 self.rate.sleep()
 
             elif self.control_mode == "LAND":
