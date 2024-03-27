@@ -119,8 +119,7 @@ class Controller:
             rospy.loginfo('vicon callback error - no data')
 
     def tolerance_error(self, goal_point):
-        # error = ((self.camera_pose.x - goal_point[0]) ** 2 + (self.camera_pose.y - goal_point[1]) **2 + (self.camera_pose.z - goal_point[2])**2)**0.5
-        error = ((self.camera_pose.z - goal_point[2])**2)**0.5
+        error = ((self.curr_position.x - goal_point[0]) ** 2 + (self.curr_position.y - goal_point[1]) **2 + (self.curr_position.z - goal_point[2])**2)**0.5
         return error
 
     def set_position(self, position):
@@ -227,7 +226,7 @@ class Controller:
             self.waypoints = np.vstack((self.waypoints, pos))
 
     def flight_exercise_3(self):
-        self.control_mode = "IDLE" # start in this mode
+        self.control_mode = "TEST" # start in this mode
         base_error = 1000
 
         # SERVICE BASED TRIGGER
@@ -241,18 +240,17 @@ class Controller:
             elif self.control_mode == "TEST":
                 rospy.loginfo("Testing now")
 
-                # TODO test this shit
-
-                # write control loop
-
                 # curr_WP is 1x3 np.array
                 curr_WP = self.waypoints[self.waypoint_curr,:]
-                self.set_position(self, curr_WP)
-                # curr_pose = None #TODO: Do we need current position?
-                base_error = self.tolerance_error(curr_WP)
-                self.rate.sleep()
-                if base_error < 0.05:
-                    self.waypoint_curr += 1
+                rospy.loginfo(curr_WP)
+
+                # self.set_position(curr_WP) 
+                # # curr_pose = None #TODO: Do we need current position?
+                # wp_error = self.tolerance_error(curr_WP) # sending in curr goal point to compare against position
+                # self.rate.sleep()
+                # if wp_error < 0.05:
+                #     rospy.loginfo("going to next waypoint")
+                #     self.waypoint_curr += 1
                 self.rate.sleep()
 
             elif self.control_mode == "LAND":
