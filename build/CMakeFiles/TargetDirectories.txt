@@ -43,3 +43,15 @@
 /home/jetson/ROB498_FlightExercises/build/flight/CMakeFiles/edit_cache.dir
 /home/jetson/ROB498_FlightExercises/build/flight/CMakeFiles/test.dir
 /home/jetson/ROB498_FlightExercises/build/flight/CMakeFiles/_catkin_empty_exported_target.dir
+/home/jetson/ROB498_FlightExercises/build/flight3/CMakeFiles/install/strip.dir
+/home/jetson/ROB498_FlightExercises/build/flight3/CMakeFiles/install/local.dir
+/home/jetson/ROB498_FlightExercises/build/flight3/CMakeFiles/edit_cache.dir
+/home/jetson/ROB498_FlightExercises/build/flight3/CMakeFiles/test.dir
+/home/jetson/ROB498_FlightExercises/build/flight3/CMakeFiles/std_msgs_generate_messages_py.dir
+/home/jetson/ROB498_FlightExercises/build/flight3/CMakeFiles/std_msgs_generate_messages_nodejs.dir
+/home/jetson/ROB498_FlightExercises/build/flight3/CMakeFiles/std_msgs_generate_messages_lisp.dir
+/home/jetson/ROB498_FlightExercises/build/flight3/CMakeFiles/std_msgs_generate_messages_eus.dir
+/home/jetson/ROB498_FlightExercises/build/flight3/CMakeFiles/install.dir
+/home/jetson/ROB498_FlightExercises/build/flight3/CMakeFiles/list_install_components.dir
+/home/jetson/ROB498_FlightExercises/build/flight3/CMakeFiles/rebuild_cache.dir
+/home/jetson/ROB498_FlightExercises/build/flight3/CMakeFiles/std_msgs_generate_messages_cpp.dir
