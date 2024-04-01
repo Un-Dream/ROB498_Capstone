@@ -1,7 +1,9 @@
 for flight test 3  
 
 #in terminal 1:
-no_sim=1 make px4_sitl_default gazebo
+#no_sim=1 make px4_sitl_default gazebo drone sample with no camera
+cd /path/to/PX4-Autopilot
+make px4_sitl gazebo_iris_opt_flow
 
 #in termianl 2:
 cd <PX4-Autopilot_clone>
