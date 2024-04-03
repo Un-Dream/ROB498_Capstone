@@ -39,6 +39,7 @@ def waypoints():
 
         # Publish the PoseArray message
         pose_array_pub.publish(pose_array_msg)
+        rospy.loginfo(pose_array_msg)
         # rospy.loginfo(pose_array_msg)
         # Sleep according to the loop rate
         rate.sleep()

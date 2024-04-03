@@ -7,9 +7,4 @@
 # new environment variables
 
 # modified environment variables
-export CMAKE_PREFIX_PATH="/home/jetson/ROB498_FlightExercises/devel:$CMAKE_PREFIX_PATH"
-export LD_LIBRARY_PATH="/home/jetson/ROB498_FlightExercises/devel/lib:$LD_LIBRARY_PATH"
-export PKG_CONFIG_PATH="/home/jetson/ROB498_FlightExercises/devel/lib/pkgconfig:$PKG_CONFIG_PATH"
 export PWD='/home/jetson/ROB498_FlightExercises/build'
-export ROSLISP_PACKAGE_DIRECTORIES='/home/jetson/ROB498_FlightExercises/devel/share/common-lisp'
-export ROS_PACKAGE_PATH="/home/jetson/ROB498_FlightExercises/src:$ROS_PACKAGE_PATH"

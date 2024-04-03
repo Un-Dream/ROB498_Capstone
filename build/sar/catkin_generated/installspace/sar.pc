@@ -1,0 +1,8 @@
+prefix=/home/jetson/ROB498_FlightExercises/install
+
+Name: sar
+Description: Description of sar
+Version: 0.0.0
+Cflags: 
+Libs: -L${prefix}/lib 
+Requires: 

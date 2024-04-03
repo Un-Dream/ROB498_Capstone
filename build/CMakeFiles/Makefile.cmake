@@ -16,11 +16,14 @@ set(CMAKE_MAKEFILE_DEPENDS
   "flight/catkin_generated/package.cmake"
   "flight3/catkin_generated/ordered_paths.cmake"
   "flight3/catkin_generated/package.cmake"
+  "sar/catkin_generated/package.cmake"
   "/home/jetson/ROB498_FlightExercises/src/CMakeLists.txt"
   "/home/jetson/ROB498_FlightExercises/src/flight/CMakeLists.txt"
   "/home/jetson/ROB498_FlightExercises/src/flight/package.xml"
   "/home/jetson/ROB498_FlightExercises/src/flight3/CMakeLists.txt"
   "/home/jetson/ROB498_FlightExercises/src/flight3/package.xml"
+  "/home/jetson/ROB498_FlightExercises/src/sar/CMakeLists.txt"
+  "/home/jetson/ROB498_FlightExercises/src/sar/package.xml"
   "/opt/ros/noetic/share/catkin/cmake/all.cmake"
   "/opt/ros/noetic/share/catkin/cmake/assert.cmake"
   "/opt/ros/noetic/share/catkin/cmake/atomic_configure_file.cmake"
@@ -171,6 +174,7 @@ set(CMAKE_MAKEFILE_PRODUCTS
   "gtest/googlemock/CMakeFiles/CMakeDirectoryInformation.cmake"
   "gtest/googletest/CMakeFiles/CMakeDirectoryInformation.cmake"
   "flight/CMakeFiles/CMakeDirectoryInformation.cmake"
+  "sar/CMakeFiles/CMakeDirectoryInformation.cmake"
   "flight3/CMakeFiles/CMakeDirectoryInformation.cmake"
   )
 

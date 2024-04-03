@@ -132,6 +132,7 @@ if(NOT CMAKE_INSTALL_LOCAL_ONLY)
   # Include the install script for each subdirectory.
   include("/home/jetson/ROB498_FlightExercises/build/gtest/cmake_install.cmake")
   include("/home/jetson/ROB498_FlightExercises/build/flight/cmake_install.cmake")
+  include("/home/jetson/ROB498_FlightExercises/build/sar/cmake_install.cmake")
   include("/home/jetson/ROB498_FlightExercises/build/flight3/cmake_install.cmake")
 
 endif()

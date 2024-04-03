@@ -49,7 +49,7 @@ class Controller:
 
         # initialize the waypoint queue once - this is ok
         # self.waypoint_queue = self.waypoints #self.jiggle_generator(self.waypoints)
-        self.waypoint_queue = self.jiggle_generator(self.waypoints)
+        self.waypoint_queue = self.waypoints
         self.waypoint_curr = 0
 
 
@@ -94,6 +94,20 @@ class Controller:
         self.srv_land = rospy.Service(node_name + '/comm/land', Empty, self.callback_land)
         self.srv_abort = rospy.Service(node_name + '/comm/abort', Empty, self.callback_abort)
 
+    def callback_waypoints(self, msg):
+        '''
+        Input: msg in PoseArray
+        Output:self.waypoints:
+                    np.array in Nx3; storing original WP from msg
+        '''
+        if self.WAYPOINTS_RECEIVED:
+            return
+        print('Waypoints Received')
+        self.WAYPOINTS_RECEIVED = True
+        self.waypoints = np.empty((0,3))
+        for pose in msg.poses:
+            pos = np.array([pose.position.x, pose.position.y, pose.position.z])
+            self.waypoints = np.vstack((self.waypoints, pos))
 
     def mavros_callback(self,msg):
         self.curr_position = msg.pose.pose.position
