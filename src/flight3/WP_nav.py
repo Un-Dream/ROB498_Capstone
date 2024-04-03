@@ -25,7 +25,7 @@ class Controller:
         self.rate = rospy.Rate(60)
         # mavros publishers
         self.mavros_pub = rospy.Publisher('/mavros/setpoint_position/local', PoseStamped, queue_size = 10)
-        self.mavros_odom = rospy.Publisher('/mavros/odometry/out', Odometry, queue_size = 10)
+        # self.mavros_odom = rospy.Publisher('/mavros/odometry/out', Odometry, queue_size = 10)
         self.mavros_pose = rospy.Subscriber('/mavros/odometry/in', Odometry, self.mavros_callback)
 
         ### Subscriber Banks
@@ -38,14 +38,21 @@ class Controller:
         self.WAYPOINTS_RECEIVED = False
         self.waypoints = None
         # self.waypoints_sub = rospy.Subscriber('/start_pub_wpts_c3_05', PoseArray, self.callback_waypoints)
-        self.waypoints_sub = rospy.Subscriber('/comm/dummy_waypoints', PoseArray, self.callback_waypoints)
+        self.waypoints_sub = rospy.Subscriber('/rob498_drone_05/comm/waypoints', PoseArray, self.callback_waypoints)
         while self.waypoints is None:
             rospy.loginfo('waiting for waypoints')
             pass
 
+        self.vicon_start_x = 0
+        self.vicon_start_y = 0 
+        self.vicon_start_z = 0
+
         # initialize the waypoint queue once - this is ok
-        self.waypoints_queue = self.jiggle_generator(self.waypoints)
+        # self.waypoint_queue = self.waypoints #self.jiggle_generator(self.waypoints)
+        self.waypoint_queue = self.jiggle_generator(self.waypoints)
         self.waypoint_curr = 0
+
+
 
 
     
@@ -90,7 +97,7 @@ class Controller:
 
     def mavros_callback(self,msg):
         self.curr_position = msg.pose.pose.position
-        rospy.loginfo(self.curr_position)
+        # rospy.loginfo(self.curr_position)
 
     def camera_callback(self, msg):
         # self.camera_data_full = msg
@@ -106,7 +113,7 @@ class Controller:
         odom_msg.pose.pose.orientation.y = msg.pose.pose.orientation.y
         odom_msg.pose.pose.orientation.z = msg.pose.pose.orientation.z
         odom_msg.pose.pose.orientation.w = msg.pose.pose.orientation.w
-        self.mavros_odom.publish(odom_msg)
+        # self.mavros_odom.publish(odom_msg)
 
     def state_callback(self, state):
         self.state = state
@@ -132,10 +139,15 @@ class Controller:
                 rospy.loginfo(response)        
         position_msg = PoseStamped()
         position_msg.header = Header()
+        position_msg.header.frame_id = "map"
         position_msg.header.stamp = rospy.Time.now()
-        position_msg.pose.pose.position.x = position[0]
-        position_msg.pose.pose.position.y = position[1]
-        position_msg.pose.pose.position.z = position[2]
+        position_msg.pose.position.x = position[0]
+        position_msg.pose.position.y = position[1]
+        position_msg.pose.position.z = position[2]
+        position_msg.pose.orientation.w = 1.0
+        position_msg.pose.orientation.x = 0.
+        position_msg.pose.orientation.y = 0.
+        position_msg.pose.orientation.z = 0.
         self.mavros_pub.publish(position_msg)
 
     # Callback handlers
@@ -144,12 +156,19 @@ class Controller:
         # FLY TO GOAL POINT
         self.start_pose = self.curr_position #TODO switch for curr vs camera pose
         if self.vicon_pose is not None:
+            self.vicon_start_x = self.vicon_pose.translation.x  
+            self.vicon_start_y = self.vicon_pose.translation.y 
             self.vicon_start_z = self.vicon_pose.translation.z   
         else:
+            self.vicon_start_x = 0
+            self.vicon_start_y = 0 
             self.vicon_start_z = 0
 
+
         rospy.loginfo('START POSE %s', self.start_pose)
-        self.goal_point = [self.start_pose.x, self.start_pose.y, self.start_pose.z - self.vicon_start_z + 1.5]
+        self.goal_point = [self.start_pose.x - self.vicon_start_x,
+                            self.start_pose.y - self.vicon_start_y,  
+                            self.start_pose.z - self.vicon_start_z + 1.5]
         self.control_mode = "LAUNCH"
         rospy.loginfo("GOAL %s", self.goal_point)
 
@@ -200,14 +219,14 @@ class Controller:
                     2 is the original wp
         '''
         jiggle_wps = np.empty((0,3))
-        jiggle_dis = 0.1 #meter
+        jiggle_dis = 0.15 # meter
         for i in range(np.shape(waypoints)[0]):
             p_2 = waypoints[i]
-            jiggle_wps = np.vstack((jiggle_wps, [p_2[0]-jiggle_dis, p_2[1]-jiggle_dis, p_2[2]]))
-            jiggle_wps = np.vstack((jiggle_wps, p_2))
-            jiggle_wps = np.vstack((jiggle_wps, [p_2[0]+jiggle_dis, p_2[1]+jiggle_dis, p_2[2]]))
-            jiggle_wps = np.vstack((jiggle_wps, [p_2[0]-jiggle_dis, p_2[1]+jiggle_dis, p_2[2]]))
-            jiggle_wps = np.vstack((jiggle_wps, [p_2[0]+jiggle_dis, p_2[1]-jiggle_dis, p_2[2]]))
+            jiggle_wps = np.vstack((jiggle_wps, [p_2[0]-jiggle_dis -self.vicon_start_x , p_2[1]-jiggle_dis - self.vicon_start_y, p_2[2] - jiggle_dis - self.vicon_start_z]))
+            jiggle_wps = np.vstack((jiggle_wps, [p_2[0] - self.vicon_start_x, p_2[1] - self.vicon_start_y, p_2[2] - self.vicon_start_z ]))
+            jiggle_wps = np.vstack((jiggle_wps, [p_2[0]+jiggle_dis - self.vicon_start_x, p_2[1]+jiggle_dis - self.vicon_start_y, p_2[2] + jiggle_dis - self.vicon_start_z]))
+            jiggle_wps = np.vstack((jiggle_wps, [p_2[0]-jiggle_dis - self.vicon_start_x, p_2[1]+jiggle_dis - self.vicon_start_y, p_2[2] + jiggle_dis]))
+            jiggle_wps = np.vstack((jiggle_wps, [p_2[0]+jiggle_dis - self.vicon_start_x, p_2[1]-jiggle_dis - self.vicon_start_y, p_2[2] - jiggle_dis]))
         return jiggle_wps
 
     def callback_waypoints(self, msg):
@@ -226,7 +245,7 @@ class Controller:
             self.waypoints = np.vstack((self.waypoints, pos))
 
     def flight_exercise_3(self):
-        self.control_mode = "TEST" # start in this mode
+        self.control_mode = "IDLE" # start in this mode
         base_error = 1000
 
         # SERVICE BASED TRIGGER
@@ -238,23 +257,29 @@ class Controller:
             
             # For Task 3
             elif self.control_mode == "TEST":
-                rospy.loginfo("Testing now")
+                if self.waypoint_curr == len(self.waypoint_queue):
+                    self.control_mode == "LAND"
+                # rospy.loginfo("Testing now")
 
                 # curr_WP is 1x3 np.array
-                curr_WP = self.waypoints[self.waypoint_curr,:]
-                rospy.loginfo(curr_WP)
+                else:
+                    curr_WP = self.waypoint_queue[self.waypoint_curr,:]
+                    # rospy.loginfo(curr_WP)
 
-                # self.set_position(curr_WP) 
-                # # curr_pose = None #TODO: Do we need current position?
-                # wp_error = self.tolerance_error(curr_WP) # sending in curr goal point to compare against position
-                # self.rate.sleep()
-                # if wp_error < 0.05:
-                #     rospy.loginfo("going to next waypoint")
-                #     self.waypoint_curr += 1
+                    self.set_position(curr_WP) 
+                    wp_error = self.tolerance_error(curr_WP) # sending in curr goal point to compare against position
+                    # rospy.loginfo(wp_error)
+                    self.rate.sleep()
+                    if wp_error < 0.05:
+                        rospy.loginfo("going to next waypoint")
+                        self.waypoint_curr += 1
+                        if self.waypoint_curr == len(self.waypoint_queue):
+                            self.control_mode == "LAND"
                 self.rate.sleep()
 
             elif self.control_mode == "LAND":
                 rospy.loginfo("fly home")
+                
                 self.set_position([self.start_pose.x, self.start_pose.y, self.start_pose.z])
                 base_error = self.tolerance_error([self.start_pose.x, self.start_pose.y, self.start_pose.z])
                 self.rate.sleep()
@@ -262,8 +287,8 @@ class Controller:
                     self.control_mode = "END"
             elif self.control_mode == "ABORT":
                 rospy.loginfo("abort")
-                self.set_position([self.camera_pose.x, self.camera_pose.y, self.start_pose.z])
-                base_error = self.tolerance_error([self.camera_pose.x, self.camera_pose.y, self.start_pose.z])
+                self.set_position([self.curr_position.x, self.curr_position.y, self.start_pose.z])
+                base_error = self.tolerance_error([self.curr_position.x, self.curr_position.y, self.start_pose.z])
                 self.rate.sleep()
                 if base_error < 0.05:
                     self.control_mode = "END"
@@ -278,10 +303,9 @@ class Controller:
 
 if __name__  == "__main__":
     try: 
-        print('hello')
-        rospy.loginfo('hi')
+
         controller = Controller()
-        # controller.flight_exercise_3()
+        controller.flight_exercise_3()
         
 
     except rospy.ROSInterruptException:

@@ -18,12 +18,23 @@ def pose_array_publisher():
         pose_array_msg = PoseArray()
 
         # Populate the PoseArray message with some example poses
-        for i in range(5):
+        for i in range(3):
             pose = Pose()
-            pose.position.x = i * 0.1
-            pose.position.y = i * 0.1
-            pose.position.z = i * 0.1
-            pose.orientation.w = 1.0  # Identity quaternion
+            if i == 0:
+                pose.position.x = 0.5
+                pose.position.y = 0
+                pose.position.z = 0
+                pose.orientation.w = 1.0  # Identity quaternion
+            elif i==1:
+                pose.position.x = 0
+                pose.position.y = 0.5
+                pose.position.z = 0
+                pose.orientation.w = 1.0  # Identity quaternion
+            elif i==2:
+                pose.position.x = 0
+                pose.position.y = 0
+                pose.position.z = 0.5
+                pose.orientation.w = 1.0  # Identity quaternion
             pose_array_msg.poses.append(pose)
 
         # Publish the PoseArray message
