@@ -50,3 +50,7 @@ if __name__ == '__main__':
         pass
 
   
+  # estimate of our own pose vs GT
+  # plot trajectory 
+  # all the points coming in
+  # plot vicon, estimate and waypoints
