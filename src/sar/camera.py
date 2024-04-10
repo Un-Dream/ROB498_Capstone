@@ -21,8 +21,17 @@ class Camera:
         self.width = 1640
         self.height = 1232
         self.camera = cv2.VideoCapture(camera(0, self.width, self.height))
+
+        self.mtx = np.array([[1.90141428e+02, 0.00000000e+00, 1.93371637e+02],
+                    [0.00000000e+00, 1.90074752e+02, 1.36530788e+02],
+                    [0.00000000e+00, 0.00000000e+00, 1.00000000e+00]])
+        self.dist = np.array([[-0.33485375, 0.14237009, 0.00069925, 0.00196279, -0.03062868]])
         self.rate = rospy.Rate(1)
         self.bridge = CvBridge()
+        self.newcameramtx, self.roi = cv2.getOptimalNewCameraMatrix(self.mtx, self.dist, (self.width,self.height), 0,  (self.width,self.height))
+
+
+        
 
     def mavros_callback(self,msg):
         self.curr_position = msg.pose.pose.position
@@ -39,7 +48,10 @@ class Camera:
             
             if frame_0 is not None:
                 # rospy.loginfo('has image')
-
+                dst = cv2.undistort(frame_0, self.mtx, self.dist, None, self.newcameramtx)
+                # crop the image
+                x, y, w, h = self.roi
+                dst = dst[y:y+h, x:x+w]
 
                 #TODO add colour correction if we want
                 #This is now publishing our images
@@ -48,7 +60,7 @@ class Camera:
 
 
                  # color space 
-                hsvFrame = cv2.cvtColor(frame_0, cv2.COLOR_BGR2HSV) 
+                hsvFrame = cv2.cvtColor(dst, cv2.COLOR_BGR2HSV) 
             
                 # Set range for red color and  
                 # define mask 
@@ -80,7 +92,8 @@ class Camera:
                         y = cY
 
                         #camera intrinsics
-                        K = np.array([[1.0, 0.0, 0.0], [0.0, 1.0, 0.0], [0.0, 0.0, 1.0]])
+                        # K = np.array([[1.0, 0.0, 0.0], [0.0, 1.0, 0.0], [0.0, 0.0, 1.0]])
+                        K = self.mtx
 
                         """
                         K = np.array([[focal_length_x, 0, principal_point_x],
