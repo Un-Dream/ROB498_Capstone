@@ -118,7 +118,7 @@ class Camera:
 
 
                 # Convert the frame to a ROS Image message
-                image_msg = self.bridge.cv2_to_imgmsg(frame_0, "bgr8")
+                image_msg = self.bridge.cv2_to_imgmsg(dst, "bgr8")
 
                 # Publish the image message to the camera topic
                 self.publisher.publish(image_msg)
