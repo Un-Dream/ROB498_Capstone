@@ -3,7 +3,7 @@ import rospy
 from geometry_msgs.msg import Pose, PoseArray
 
 grid_size = 5
-step_size = 1
+step_size = 0.5
 pattern = 'lawnmower'
 height = 1
 
@@ -27,12 +27,18 @@ def waypoints():
             num_cols = grid_size
             row_step = step_size
             col_step = step_size
+            
 
             for row in range(num_rows):
                 for col in range(num_cols):
                     pose = Pose()
-                    pose.position.x = col * col_step
-                    pose.position.y = row * row_step if row % 2 == 0 else (num_cols - col - 1) * col_step
+                    pose.position.x = col * col_step 
+                    if row % 2 == 0:
+                        pose.position.x = col * col_step 
+                        pose.position.y = row * row_step 
+                    else:
+                        pose.position.x = (num_cols - col - 1) * col_step
+                        pose.position.y = row * row_step 
                     pose.position.z = height
                     pose.orientation.w = 1.0  # Identity quaternion
                     pose_array_msg.poses.append(pose)

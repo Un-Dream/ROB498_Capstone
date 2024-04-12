@@ -6,7 +6,11 @@ import rospy
 import mavros_msgs
 import time
 import numpy as np
+import matplotlib
+matplotlib.use('Agg')
+
 import matplotlib.pyplot as plt
+
 
 from mavros_msgs.msg import State
 from mavros_msgs.srv import SetMode, CommandBool, CommandBoolRequest, SetModeRequest
@@ -30,7 +34,7 @@ class Eval:
 
         self.vicon_pose = None
         self.waypoints = None
-        self.waypoint_not_saved = False
+        self.waypoint_saved = False
 
         self.timer = None
         
@@ -43,7 +47,7 @@ class Eval:
 
     def callback_test(self, request):
         self.handle_test()
-        self.timer = rospy.Timer(rospy.Duration(5), self.plot())
+        # self.timer = rospy.Timer(rospy.Duration(2), self.plot())
         return EmptyResponse()
     
     def handle_test(self):
@@ -72,7 +76,7 @@ class Eval:
 
     def callback_waypoints(self, pose_array_msg):
 
-        if self.waypoint_not_saved:
+        if self.waypoint_saved == False:
             # Iterate through each pose in the PoseArray message
             for pose in pose_array_msg.poses:
                 # Extract x, y, z components of the position
@@ -81,10 +85,10 @@ class Eval:
                 z = pose.position.z
                 # Append [x, y, z] to the positions list
                 self.positions_waypoints.append([x, y, z])
-                self.waypoint_not_saved = True
+                self.waypoint_saved = True
 
 
-    def plot(self, vicon=True, waypoints=True, estimate=True):
+    def plot(self, vicon=False, waypoints=True, estimate=True):
         fig = plt.figure()
         ax = fig.add_subplot(111, projection='3d')
         ax.set_xlabel('X')
@@ -93,11 +97,12 @@ class Eval:
 
         if vicon:
             ax.plot(*zip(* self.positions_vicon), label = "vicon")
-
-        if waypoints:
+        rospy.loginfo(self.positions_waypoints)
+        rospy.loginfo(len(self.positions_waypoints))
+        if waypoints and len(self.positions_waypoints)>0:
             ax.plot(*zip(* self.positions_waypoints), label = "waypoints")
 
-        if estimate:
+        if estimate and len(self.positions_est)>0:
             ax.plot(*zip(* self.positions_est), label = "estimated")
 
         ax.legend()
@@ -107,6 +112,10 @@ class Eval:
 if __name__  == "__main__":
     try: 
         test = Eval()
+
+        while not rospy.is_shutdown():
+            test.plot()
+        rospy.spin()
     except rospy.ROSInterruptException:
             pass
     

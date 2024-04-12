@@ -51,7 +51,7 @@ class Camera:
         while img is None :
             self.camera = cv2.VideoCapture(camera(0, self.width, self.height))
             __, img = self.camera.read()
-        img = cv2.resize(self.img, (0,0), fx=0.25, fy=0.25)
+        img = cv2.resize(img, (0,0), fx=0.25, fy=0.25)
 
         h, w, c = img.shape
         self.newcameramtx, self.roi = cv2.getOptimalNewCameraMatrix(self.mtx, self.dist, (w,h), 0, (w,h))
@@ -63,38 +63,32 @@ class Camera:
 
     def start(self):
         while not rospy.is_shutdown():
-            # Capture a frame from the camera
             ret_0, frame_0 = self.camera.read()
-            # print(frame_0)
             if not ret_0:
                 rospy.logerr('Failed to capture image')
                 return
             
             if frame_0 is not None:
-                rospy.loginfo('has image')
-                img = cv2.resize(img, (0,0), fx=0.25, fy=0.25)
-                h, w, c = img.shape
+                # rospy.loginfo('has image')
+                frame_0 = cv2.resize(frame_0, (0,0), fx=0.25, fy=0.25)
+                h, w, c = frame_0.shape
                 self.newcameramtx, self.roi = cv2.getOptimalNewCameraMatrix(self.mtx, self.dist, (w,h), 0, (w,h))
 
                 dst = cv2.undistort(frame_0, self.mtx, self.dist, None, self.newcameramtx)
-                print(dst.shape)
-                # crop the image
                 x, y, w, h = self.roi
                 dst = dst[y:y+h, x:x+w]
-                
-                #TODO add colour correction if we want
-                #This is now publishing our images
-                #Make a new node to sub to /imx/images, and positional stuff 
-                #process using opencv code <<--- AMY
 
+                #Change to grayscale
+                dst_gray = cv2.cvtColor(dst, cv2.COLOR_BGR2GRAY)
 
-                # color space 
+                '''
                 hsvFrame = cv2.cvtColor(dst, cv2.COLOR_BGR2HSV) 
-            
                 # Set range for red color and  
                 # define mask 
-                red_lower = np.array([136, 87, 111], np.uint8) 
-                red_upper = np.array([180, 255, 255], np.uint8) 
+                # red_lower = np.array([136, 87, 111], np.uint8) 
+                # red_upper = np.array([180, 255, 255], np.uint8)
+                red_lower = np.array([50, 0, 0], np.uint8) 
+                red_upper = np.array([244, 140, 50], np.uint8) 
                 red_mask = cv2.inRange(hsvFrame, red_lower, red_upper) 
                     # Creating contour to track red color 
                 contours, hierarchy = cv2.findContours(red_mask, 
@@ -105,7 +99,7 @@ class Camera:
                 
                 for pic, contour in enumerate(contours): 
                     area = cv2.contourArea(contour) 
-                    if(area > 300): 
+                    if(area > 10): 
 
                         #find the center of the contour
                         M = cv2.moments(contour)
@@ -152,17 +146,17 @@ class Camera:
                         #publish the point
                         rospy.loginfo(point_world)
                         # self.publisher_detection.publish(point_world)
-
-                            
-                # Convert the frame to a ROS Image message
-                image_msg = self.bridge.cv2_to_imgmsg(dst, "bgr8")
-
-                #save image
-                cv2.imwrite('image.png', dst)
+                '''
 
 
-                # Publish the image message to the camera topic
-                self.publisher.publish(image_msg)
+                # print(dst[int(dst.shape[0]/2), int(dst.shape[1]/2),:])
+
+                cv2.imshow('Calibration Result', dst_gray)
+                # cv2.imwrite('image.png', dst)
+                key = cv2.waitKey(10)
+                if key == ord("q"):
+                    break
+
             self.rate.sleep()
 
 if __name__ == '__main__':
