@@ -8,6 +8,8 @@ import numpy as np
 from geometry_msgs.msg import PoseStamped, TransformStamped, Pose, PoseArray, Point
 from nav_msgs.msg import Odometry
 
+from apriltag import Detector
+
 
 class Camera:
     def __init__(self):
@@ -102,56 +104,78 @@ class Camera:
                                                     cv2.CHAIN_APPROX_SIMPLE) 
                 
                 colour_list = []
+
+                #TODO replace image path / matric
+                image = cv2.imread(image_path, cv2.IMREAD_GRAYSCALE)
+
+                # Create AprilTag detector
+                detector = Detector(families='tag36h11')
+
+                # Detect tags in the image
+                detections = detector.detect(image)
+
+                # Filter H11 tags
+                h11_tags = [d for d in detections if d.tag_id == 11]
+
+
+                if h11_tags:
+                    print("H11 AprilTag detected!")
+                    for tag in h11_tags:
+                        print("Tag ID:", tag.tag_id)
+                        print("Center:", tag.center)
+                        print("Corners:", tag.corners)
+                else:
+                    print("H11 AprilTag not detected.")
                 
-                for pic, contour in enumerate(contours): 
-                    area = cv2.contourArea(contour) 
-                    if(area > 300): 
+                # for pic, contour in enumerate(contours): 
+                #     area = cv2.contourArea(contour) 
+                #     if(area > 300): 
 
-                        #find the center of the contour
-                        M = cv2.moments(contour)
-                        cX = int(M["m10"] / M["m00"])
-                        cY = int(M["m01"] / M["m00"])
-                        # cv2.circle(imageFrame, (cX, cY), 5, (255, 255, 255), -1)
+                #         #find the center of the contour
+                #         M = cv2.moments(contour)
+                #         cX = int(M["m10"] / M["m00"])
+                #         cY = int(M["m01"] / M["m00"])
+                #         # cv2.circle(imageFrame, (cX, cY), 5, (255, 255, 255), -1)
 
-                        #backwards projection
-                        #get the depth of the pixel
-                        z = self.curr_position.z
-                        #get the x and y of the pixel
-                        x = cX
-                        y = cY
+                #         #backwards projection
+                #         #get the depth of the pixel
+                #         z = self.curr_position.z
+                #         #get the x and y of the pixel
+                #         x = cX
+                #         y = cY
 
-                        #camera intrinsics
-                        # K = np.array([[1.0, 0.0, 0.0], [0.0, 1.0, 0.0], [0.0, 0.0, 1.0]])
-                        K = self.mtx
+                #         #camera intrinsics
+                #         # K = np.array([[1.0, 0.0, 0.0], [0.0, 1.0, 0.0], [0.0, 0.0, 1.0]])
+                #         K = self.mtx
 
-                        """
-                        K = np.array([[focal_length_x, 0, principal_point_x],
-                        [0, focal_length_y, principal_point_y],
-                        [0, 0, 1]])
-                        """
-                        K_inv = np.linalg.inv(K)
+                #         """
+                #         K = np.array([[focal_length_x, 0, principal_point_x],
+                #         [0, focal_length_y, principal_point_y],
+                #         [0, 0, 1]])
+                #         """
+                #         K_inv = np.linalg.inv(K)
 
-                        #get the pixel in camera frame
-                        pixel = np.array([x, y, 1])
-                        point_camera = np.dot(K_inv, pixel) * z
+                #         #get the pixel in camera frame
+                #         pixel = np.array([x, y, 1])
+                #         point_camera = np.dot(K_inv, pixel) * z
 
-                        #make into pose type
-                        pose_camera = Point()
-                        pose_camera.x = point_camera[0]
-                        pose_camera.y = point_camera[1]
-                        pose_camera.z = point_camera[2]
+                #         #make into pose type
+                #         pose_camera = Point()
+                #         pose_camera.x = point_camera[0]
+                #         pose_camera.y = point_camera[1]
+                #         pose_camera.z = point_camera[2]
 
 
-                        #get the pixel in world frame
-                        #add them together
-                        point_world = Point()
-                        point_world.x = self.curr_position.x + pose_camera.x
-                        point_world.y = self.curr_position.y + pose_camera.y
-                        point_world.z = self.curr_position.z + pose_camera.z
+                #         #get the pixel in world frame
+                #         #add them together
+                #         point_world = Point()
+                #         point_world.x = self.curr_position.x + pose_camera.x
+                #         point_world.y = self.curr_position.y + pose_camera.y
+                #         point_world.z = self.curr_position.z + pose_camera.z
 
-                        #publish the point
-                        rospy.loginfo(point_world)
-                        # self.publisher_detection.publish(point_world)
+                #         #publish the point
+                #         rospy.loginfo(point_world)
+                #         # self.publisher_detection.publish(point_world)
 
                             
                 # Convert the frame to a ROS Image message
