@@ -8,6 +8,8 @@ import numpy as np
 from geometry_msgs.msg import PoseStamped, TransformStamped, Pose, PoseArray, Point
 from nav_msgs.msg import Odometry
 
+from apriltag import Detector, DetectorOptions
+
 
 class Camera:
     def __init__(self):
@@ -81,73 +83,60 @@ class Camera:
                 #Change to grayscale
                 dst_gray = cv2.cvtColor(dst, cv2.COLOR_BGR2GRAY)
 
-                '''
-                hsvFrame = cv2.cvtColor(dst, cv2.COLOR_BGR2HSV) 
-                # Set range for red color and  
-                # define mask 
-                # red_lower = np.array([136, 87, 111], np.uint8) 
-                # red_upper = np.array([180, 255, 255], np.uint8)
-                red_lower = np.array([50, 0, 0], np.uint8) 
-                red_upper = np.array([244, 140, 50], np.uint8) 
-                red_mask = cv2.inRange(hsvFrame, red_lower, red_upper) 
-                    # Creating contour to track red color 
-                contours, hierarchy = cv2.findContours(red_mask, 
-                                                    cv2.RETR_TREE, 
-                                                    cv2.CHAIN_APPROX_SIMPLE) 
-                
-                colour_list = []
-                
-                for pic, contour in enumerate(contours): 
-                    area = cv2.contourArea(contour) 
-                    if(area > 10): 
+                # Create AprilTag detector
+                options = DetectorOptions(families='tag36h11')
+                detector = Detector(options)
 
-                        #find the center of the contour
-                        M = cv2.moments(contour)
-                        cX = int(M["m10"] / M["m00"])
-                        cY = int(M["m01"] / M["m00"])
-                        # cv2.circle(imageFrame, (cX, cY), 5, (255, 255, 255), -1)
+                # Detect tags in the image
+                detections = detector.detect(dst_gray)
 
-                        #backwards projection
-                        #get the depth of the pixel
-                        z = self.curr_position.z
-                        #get the x and y of the pixel
-                        x = cX
-                        y = cY
+                # Filter H11 tags, detect id 11 only
+                h11_tags = [d for d in detections if d.tag_id == 11]
 
-                        #camera intrinsics
-                        # K = np.array([[1.0, 0.0, 0.0], [0.0, 1.0, 0.0], [0.0, 0.0, 1.0]])
-                        K = self.mtx
+                if h11_tags:
+                    print("H11 AprilTag detected!")
+                    for tag in h11_tags:
+                        # print("Tag ID:", tag.tag_id)
+                        # print("Center:", tag.center)
+                        # print("Corners:", tag.corners)
+                        # M, init_error, final_error = detector.detection_pose(tag, self.mtx)
+                        # print(M)
+                        # TODO FIND POSITION
+                        # HAVE A NODE TO LISTEN TO POSITION
+                        # NEED TO PRINT POSITION
+                        imagePoints = tag.corners.reshape(1,4,2)
+                        tag_size = 165
 
-                        """
-                        K = np.array([[focal_length_x, 0, principal_point_x],
-                        [0, focal_length_y, principal_point_y],
-                        [0, 0, 1]])
-                        """
-                        K_inv = np.linalg.inv(K)
+                        ob_pt1 = [-tag_size/2, -tag_size/2, 0.0]
+                        ob_pt2 = [ tag_size/2, -tag_size/2, 0.0]
+                        ob_pt3 = [ tag_size/2,  tag_size/2, 0.0]
+                        ob_pt4 = [-tag_size/2,  tag_size/2, 0.0]
+                        ob_pts = ob_pt1 + ob_pt2 + ob_pt3 + ob_pt4
+                        object_pts = np.array(ob_pts).reshape(4,3)
 
-                        #get the pixel in camera frame
-                        pixel = np.array([x, y, 1])
-                        point_camera = np.dot(K_inv, pixel) * z
+                        opoints = np.array([
+                            -1, -1, 0,
+                            1, -1, 0,
+                            1,  1, 0,
+                            -1,  1, 0,
+                            -1, -1, -2*1,
+                            1, -1, -2*1,
+                            1,  1, -2*1,
+                            -1,  1, -2*1,
+                        ]).reshape(-1, 1, 3) * 0.5*tag_size
 
-                        #make into pose type
-                        pose_camera = Point()
-                        pose_camera.x = point_camera[0]
-                        pose_camera.y = point_camera[1]
-                        pose_camera.z = point_camera[2]
+                        # mtx - the camera calibration's intrinsics
+                        good, prvecs, ptvecs = cv2.solvePnP(object_pts, imagePoints, self.mtx, self.dist, flags=cv2.SOLVEPNP_ITERATIVE)
+                        imgpts, jac = cv2.projectPoints(opoints, prvecs, ptvecs, self.mtx, self.dist)
+
+                        # Draws the edges of the pose onto the image
+                        draw_boxes(img, imgpts, edges)
 
 
-                        #get the pixel in world frame
-                        #add them together
-                        point_world = Point()
-                        point_world.x = self.curr_position.x + pose_camera.x
-                        point_world.y = self.curr_position.y + pose_camera.y
-                        point_world.z = self.curr_position.z + pose_camera.z
 
-                        #publish the point
-                        rospy.loginfo(point_world)
-                        # self.publisher_detection.publish(point_world)
-                '''
 
+                else:
+                    print("H11 AprilTag not detected.")
 
                 # print(dst[int(dst.shape[0]/2), int(dst.shape[1]/2),:])
 
@@ -155,9 +144,10 @@ class Camera:
                 # cv2.imwrite('image.png', dst)
                 key = cv2.waitKey(10)
                 if key == ord("q"):
+                    self.rate.sleep()
                     break
 
-            self.rate.sleep()
+            # self.rate.sleep()
 
 if __name__ == '__main__':
     try:

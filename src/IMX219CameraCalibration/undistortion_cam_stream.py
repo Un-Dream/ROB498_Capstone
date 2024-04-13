@@ -29,6 +29,7 @@ cap = cv2.VideoCapture(camera(0, w, h))
 while True :
     ret, frame = cap.read()
     if not ret :
+        print("dead")
         break
 
     frame = cv2.resize(frame, (0,0), fx=0.25, fy=0.25)
