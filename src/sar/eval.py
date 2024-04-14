@@ -11,7 +11,6 @@ matplotlib.use('Agg')
 
 import matplotlib.pyplot as plt
 
-
 from mavros_msgs.msg import State
 from mavros_msgs.srv import SetMode, CommandBool, CommandBoolRequest, SetModeRequest
 from nav_msgs.msg import Odometry
@@ -21,7 +20,7 @@ from std_msgs.msg import Header
 from std_srvs.srv import Empty, EmptyResponse
 
 from mpl_toolkits.mplot3d import Axes3D  # Importing 3D axes
-
+from apriltag_ros.msg import AprilTagDetectionArray
 
 class Eval:
     def __init__(self):
@@ -30,7 +29,7 @@ class Eval:
         self.vicon = rospy.Subscriber('/vicon/ROB498_Drone/ROB498_Drone', TransformStamped, self.vicon_callback)
         self.waypoints_sub = rospy.Subscriber('/comm/waypoints', PoseArray, self.callback_waypoints)
         self.mavros_pose = rospy.Subscriber('/mavros/odometry/in', Odometry, self.mavros_callback)
-
+        self.april_tag = rospy.Subscriber('/tag_detections', AprilTagDetectionArray, self.tag_callback)
 
         self.vicon_pose = None
         self.waypoints = None
@@ -74,8 +73,18 @@ class Eval:
             rospy.loginfo('vicon callback error - no data')
 
 
-    def callback_waypoints(self, pose_array_msg):
+    def tag_callback(self, msg):
+        try:
+            self.detection = msg.detections
+            self.tagId_array = self.detection.id #int32[]
+            self.tagSize_array = self.detection.size #float64[]
+            self.tagConvariance = self.detection.pose.pose.covariance #float64[36]
+            self.tagPose = self.detection.pose.pose.pose #geometry_msgs/Pose.msg  
+        except: 
+            rospy.loginfo('apriltag detection callback error - no data')
 
+
+    def callback_waypoints(self, pose_array_msg):
         if self.waypoint_saved == False:
             # Iterate through each pose in the PoseArray message
             for pose in pose_array_msg.poses:

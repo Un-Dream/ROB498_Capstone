@@ -1,4 +1,4 @@
-def camera(i, w, h):
+def camera_(i, w, h):
     return "nvarguscamerasrc sensor_id=%d ! \
     video/x-raw(memory:NVMM), \
     width=%d, height=%d, \

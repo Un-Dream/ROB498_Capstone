@@ -3,14 +3,17 @@ import rospy
 from sensor_msgs.msg import Image, CameraInfo, RegionOfInterest
 import cv2
 from cv_bridge import CvBridge
-from gst_cam import camera
+from gst_cam import camera_
 import numpy as np
 from geometry_msgs.msg import PoseStamped, TransformStamped, Pose, PoseArray, Point
 from nav_msgs.msg import Odometry
 
-from apriltag import Detector, DetectorOptions
+# from apriltag import Detector, DetectorOptions
 
 from apriltag_ros.msg import AprilTagDetectionArray
+
+
+print(cv2.__version__)
 
 
 class Camera:
@@ -29,8 +32,8 @@ class Camera:
 
 
         # Initialize the OpenCV bridge
-        self.width = 1640
-        self.height = 1232
+        self.width = 1280 #1640
+        self.height =  720 #1232
         # self.camera = cv2.VideoCapture(camera(0, self.width, self.height))
 
         self.mtx = np.array([[1.90141428e+02, 0.00000000e+00, 1.93371637e+02],
@@ -40,14 +43,14 @@ class Camera:
         self.rate = rospy.Rate(60)
         self.bridge = CvBridge()
 
-        self.camera = cv2.VideoCapture(camera(0, self.width, self.height))
+        self.camera = cv2.VideoCapture(camera_(0, self.width, self.height), cv2.CAP_GSTREAMER)
 
         print(self.camera)
 
         __, img = self.camera.read()
         while img is None :
             # rospy.loginfo("h")
-            self.camera = cv2.VideoCapture(camera(0, self.width, self.height))
+            # self.camera = cv2.VideoCapture(camera(0, self.width, self.height))
             __, img = self.camera.read()
         img = cv2.resize(img, (0,0), fx=0.25, fy=0.25)
 
@@ -98,9 +101,9 @@ class Camera:
                            [0,0,0,1]])
         
 
-        self.R = np.array([[0,-1,0,1],
-                           [1,0,0,0],
+        self.R = np.array([[-1,0,0,0],
                            [0,0,1,0],
+                           [0,1,0,0],
                            [0,0,0,1]])
         
         self.T = np.dot(self.Tx, self.R)
@@ -123,14 +126,14 @@ class Camera:
             # rotation of yaw of 90
 
             
-            pose = i.pose.pose.position
+            pose = i.pose.pose.pose.position
 
-            p = np.array([pose.x, pose.y, pose.z])
+            p = np.array([pose.x, pose.y, pose.z, 1])
 
-            world_pose = np.matmul(self.T, pose)
+            world_pose = np.matmul(self.T, p.T)
 
 
-            rospy.loginfo(world_pose)
+            # rospy.loginfo(world_pose)
         # rospy.loginfo(msg)
 
 
