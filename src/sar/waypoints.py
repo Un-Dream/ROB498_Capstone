@@ -5,7 +5,7 @@ from geometry_msgs.msg import Pose, PoseArray
 grid_size = 7
 step_size = 0.5
 pattern = 'lawnmower'
-height = 1
+height = 0.4
 
 def waypoints():
     # Initialize the ROS node
@@ -27,7 +27,7 @@ def waypoints():
             num_cols = grid_size
             row_step = step_size
             col_step = step_size
-            boundary = 5
+            boundary = 4.5
 
             xyz_list = []
             for row in range(num_rows+1):  # Include the last row
