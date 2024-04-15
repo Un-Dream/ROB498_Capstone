@@ -130,9 +130,6 @@ class Camera:
         
         self.T = np.dot(self.Tx, self.R)
 
-        # self.tagPoseGT = np.array([[2.4384,0],[,],[0, -2.4384],[,],[-2.4384, 2.4384],[,]]) #[[x,y],[x,y]]
-
-
     def mavros_callback(self,msg):
         self.curr_position = msg.pose.pose.position
 

@@ -2,7 +2,7 @@
 import rospy
 from geometry_msgs.msg import Pose, PoseArray
 
-grid_size = 5
+grid_size = 7
 step_size = 0.5
 pattern = 'lawnmower'
 height = 1
@@ -27,21 +27,33 @@ def waypoints():
             num_cols = grid_size
             row_step = step_size
             col_step = step_size
-            
+            boundary = 5
 
-            for row in range(num_rows):
-                for col in range(num_cols):
-                    pose = Pose()
-                    pose.position.x = col * col_step 
-                    if row % 2 == 0:
-                        pose.position.x = col * col_step 
-                        pose.position.y = row * row_step 
-                    else:
-                        pose.position.x = (num_cols - col - 1) * col_step
-                        pose.position.y = row * row_step 
-                    pose.position.z = height
-                    pose.orientation.w = 1.0  # Identity quaternion
-                    pose_array_msg.poses.append(pose)
+            xyz_list = []
+            for row in range(num_rows+1):  # Include the last row
+                if row % 2 == 0:
+                    for col in range(num_cols+1):  # Include the last column
+                        x = (col - num_cols/2) * col_step * (boundary / (num_cols * col_step))
+                        y = (row - num_rows/2) * row_step * (boundary / (num_rows * row_step))
+                        z = height
+                        xyz_list.append([x, y, z])
+                else:
+                    for col in range(num_cols, -1, -1):  # Include the last column
+                        x = (col - num_cols/2) * col_step * (boundary / (num_cols * col_step))
+                        y = (row - num_rows/2) * row_step * (boundary / (num_rows * row_step))
+                        z = height
+                        xyz_list.append([x, y, z])
+                    z = height
+                    xyz_list.append([x, y, z])
+            
+            # Convert xyz_list to PoseArray message
+            for xyz in xyz_list:
+                pose = Pose()
+                pose.position.x = xyz[0]
+                pose.position.y = xyz[1]
+                pose.position.z = xyz[2]
+                pose.orientation.w = 1.0  # Identity quaternion
+                pose_array_msg.poses.append(pose)
 
         # Publish the PoseArray message
         pose_array_pub.publish(pose_array_msg)

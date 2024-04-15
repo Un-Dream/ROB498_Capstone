@@ -282,8 +282,6 @@ class Controller:
                 rospy.loginfo("waiting for launch")
 
 
-
-
 if __name__  == "__main__":
     try: 
 
