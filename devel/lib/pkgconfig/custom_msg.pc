@@ -1,0 +1,8 @@
+prefix=/home/jetson/ROB498_FlightExercises/devel
+
+Name: custom_msg
+Description: Description of custom_msg
+Version: 0.0.0
+Cflags: -I/home/jetson/ROB498_FlightExercises/devel/include
+Libs: -L${prefix}/lib 
+Requires: 

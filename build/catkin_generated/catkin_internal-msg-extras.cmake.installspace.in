@@ -1,0 +1,2 @@
+set(catkin_internal_MESSAGE_FILES "msg/AprilTagPosition.msg")
+set(catkin_internal_SERVICE_FILES "")
