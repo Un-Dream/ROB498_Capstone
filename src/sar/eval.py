@@ -27,8 +27,6 @@ class Eval:
         rospy.init_node('eval', anonymous=True)
         node_name = 'rob498_drone_05'
 
-
-
         self.vicon_pose = None
         self.waypoints = None
         self.waypoint_saved = False
@@ -159,7 +157,7 @@ class Eval:
         
 
 
-    def plot(self, vicon=False, waypoints=True, estimate=True):
+    def plot(self, vicon=True, waypoints=True, estimate=True):
         fig = plt.figure()
         ax = fig.add_subplot(111, projection='3d')
         ax.set_xlabel('X')
@@ -206,7 +204,7 @@ class Eval:
         ax_top_xy.grid(True, which='both')
         # Plot ground truth positions
         if len(self.positions_vicon) > 0:
-            ax_top_xy.scatter(*zip(*[[pos[0], pos[1]] for pos in self.positions_vicon]), marker='.', s=2)
+            ax_top_xy.scatter(*zip(*[[pos[0], pos[1]] for pos in self.positions_vicon]), marker='.', s=2, label='Vicon')
         if len(self.positions_waypoints) > 0:
             ax_top_xy.scatter(*zip(*[[pos[0], pos[1]] for pos in self.positions_waypoints]), c='b', marker='.', s=2, label='Waypoints')
         if len(self.positions_est) > 0:
