@@ -10,7 +10,7 @@ from nav_msgs.msg import Odometry
 
 # from apriltag import Detector, DetectorOptions
 
-from apriltag_ros.msg import AprilTagDetectionArray
+from apriltag_ros.msg import AprilTagDetectionArray, AprilTagDetection
 
 
 print(cv2.__version__)
@@ -24,7 +24,11 @@ class Camera:
         self.mavros_pose = rospy.Subscriber('/mavros/odometry/in', Odometry, self.mavros_callback)
         self.tag_subscriber = rospy.Subscriber('/tag_detections', AprilTagDetectionArray, self.tag_callback)
         self.camera_info_publisher = rospy.Publisher('/camera_rect/camera_info', CameraInfo, queue_size=10)
-        
+        # self.tag_publisher = rospy.Publisher('/tag_position', AprilTagPosition, queue_size=10)
+        self.tag_drone_publisher = rospy.Publisher('/tag_position/drone', AprilTagDetection, queue_size=10)
+        self.tag_world_publisher = rospy.Publisher('/tag_position/world', AprilTagDetection, queue_size=10)
+
+
         self.curr_position = Point()
         self.curr_position.x = 0
         self.curr_position.y = 0
@@ -40,17 +44,17 @@ class Camera:
                     [0.00000000e+00, 1.90074752e+02, 1.36530788e+02],
                     [0.00000000e+00, 0.00000000e+00, 1.00000000e+00]])
         self.dist = np.array([[-0.33485375, 0.14237009, 0.00069925, 0.00196279, -0.03062868]])
-        self.rate = rospy.Rate(60)
+        self.rate = rospy.Rate(20)
         self.bridge = CvBridge()
 
         self.camera = cv2.VideoCapture(camera_(0, self.width, self.height), cv2.CAP_GSTREAMER)
 
-        print(self.camera)
+        # print(self.camera)
 
         __, img = self.camera.read()
         while img is None :
             # rospy.loginfo("h")
-            # self.camera = cv2.VideoCapture(camera(0, self.width, self.height))
+            self.camera = cv2.VideoCapture(camera_(0, self.width, self.height))
             __, img = self.camera.read()
         img = cv2.resize(img, (0,0), fx=0.25, fy=0.25)
 
@@ -95,18 +99,39 @@ class Camera:
         self.camera_info_msg.binning_y = 0
         self.camera_info_msg.roi = self.ROI
 
-        self.Tx = np.array([[1,0,0,1],
-                           [0,1,0,0],
-                           [0,0,1,0],
+        self.Tx = np.array([[1,0,0,-0.06],
+                           [0,1,0,0.04],
+                           [0,0,1,0.08],
                            [0,0,0,1]])
         
 
-        self.R = np.array([[-1,0,0,0],
-                           [0,0,1,0],
-                           [0,1,0,0],
-                           [0,0,0,1]])
+        # self.R = np.array([[-1,0,0,0],
+        #                    [0,0,1,0],
+        #                    [0,1,0,0],
+        #                    [0,0,0,1]])
+
+        self.Rz = np.array([[0, -1, 0, 0],
+                            [1, 0, 0, 0],
+                            [0, 0, 1, 0],
+                            [0, 0, 0, 1]])
+        
+        self.Ry = np.array([[1, 0, 0, 0],
+                            [0, 1, 0, 0],
+                            [0, 0, 1, 0],
+                            [0, 0, 0, 1]])
+        
+        self.Rx = np.array([[1, 0, 0, 0],
+                            [0, -1, 0, 0],
+                            [0, 0, -1, 0],
+                            [0, 0, 0, 1]])
+        
+        # self.T = np.dot(np.dot(self.Tx, self.Rx), self.R)
+        self.R = np.dot(np.dot(self.Rz, self.Ry), self.Rx)
         
         self.T = np.dot(self.Tx, self.R)
+
+        # self.tagPoseGT = np.array([[2.4384,0],[,],[0, -2.4384],[,],[-2.4384, 2.4384],[,]]) #[[x,y],[x,y]]
+
 
     def mavros_callback(self,msg):
         self.curr_position = msg.pose.pose.position
@@ -125,18 +150,77 @@ class Camera:
             # translation
             # rotation of yaw of 90
 
-            
-            pose = i.pose.pose.pose.position
+            tagId = i.id[0] #int32[]
+            tagSize = i.size[0] #float64[]
+            tagPose = i.pose.pose.pose.position #geometry_msgs/Pose.msg  
 
-            p = np.array([pose.x, pose.y, pose.z, 1])
+            if tagId>7 or tagId<2:
+                rospy.loginfo("Tag id not exist, available id: 2 to 7")
 
-            world_pose = np.matmul(self.T, p.T)
+            else:
+                x = tagPose.x
+                y = tagPose.y
+                z = tagPose.z
+                xyz = np.array([[x],[y],[z],[1]])
+                poseTran = np.dot(self.T, xyz)
+
+                temp = AprilTagDetection()
+                temp.id = [tagId]
+                temp.size = [tagSize]
+                temp.pose.pose.pose.position.x = poseTran[0]
+                temp.pose.pose.pose.position.y = poseTran[1]
+                temp.pose.pose.pose.position.z = poseTran[2]
+                self.tag_drone_publisher.publish(temp)
+
+
+
+                # # Get current pose
+                # current_pose = PoseStamped()
+                # current_pose.header.stamp = rospy.Time.now()
+                # current_pose.header.frame_id = "world_frame"
+                # current_pose.pose.position.x = self.curr_position.x + temp.pose.pose.pose.position.x
+                # current_pose.pose.position.y = self.curr_position.y + temp.pose.pose.pose.position.y
+                # current_pose.pose.position.z = self.curr_position.z + temp.pose.pose.pose.position.z
+
+                # Transform tag pose to world frame
+                tag_pose_world = AprilTagDetection()
+                tag_pose_world.id = [tagId]
+                tag_pose_world.size = [tagSize]
+                tag_pose_world.pose.pose.pose.position.x = poseTran[0] +  self.curr_position.x
+                tag_pose_world.pose.pose.pose.position.y = poseTran[1] +  self.curr_position.y
+                tag_pose_world.pose.pose.pose.position.z  = poseTran[2] +  self.curr_position.z
+
+                # Publish tag pose in world frame
+                self.tag_world_publisher.publish(tag_pose_world)
+
+        '''
+                # GT = self.tagPoseGT[tagId-2]
+
+                # error = np.sqrt(np.sum(np.square(est_world - GT)))
+                # return error
+
+            # pose = i.pose.pose.pose.position
+
+            # p = np.array([pose.x, pose.y, pose.z, 1])
+
+            # world_pose = np.matmul(self.T, p.T)
+
+            # world_point = Point()
+            # world_point.x = world_pose[0]
+            # world_point.y = world_pose[1]
+            # world_point.z = world_pose[2]
+
+
+            # temp = AprilTagPosition()
+            # temp.id = i.id
+            # temp.world_position = world_point
+            # temp.camera_position = pose
+            # self.tag_publisher.publish(world_pose)
 
 
             # rospy.loginfo(world_pose)
         # rospy.loginfo(msg)
-
-
+        '''
 
     def start(self):
         while not rospy.is_shutdown():

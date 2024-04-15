@@ -20,7 +20,7 @@ from std_msgs.msg import Header
 from std_srvs.srv import Empty, EmptyResponse
 
 from mpl_toolkits.mplot3d import Axes3D  # Importing 3D axes
-from apriltag_ros.msg import AprilTagDetectionArray
+from apriltag_ros.msg import AprilTagDetectionArray, AprilTagDetection
 
 class Eval:
     def __init__(self):
@@ -30,6 +30,8 @@ class Eval:
         self.waypoints_sub = rospy.Subscriber('/comm/waypoints', PoseArray, self.callback_waypoints)
         self.mavros_pose = rospy.Subscriber('/mavros/odometry/in', Odometry, self.mavros_callback)
         self.april_tag = rospy.Subscriber('/tag_detections', AprilTagDetectionArray, self.tag_callback)
+        self.tagPose = rospy.Subscriber('/tag_position', AprilTagDetection, self.tagPose_callback)
+
 
         self.vicon_pose = None
         self.waypoints = None
@@ -41,8 +43,22 @@ class Eval:
         self.positions_waypoints = []
         self.positions_est = []
 
+        self.tagGT = []
         
         self.srv_test = rospy.Service(node_name + '/comm/test', Empty, self.callback_test)
+
+        self.Tx = np.array([[1,0,0,1],
+                            [0,1,0,0],
+                            [0,0,1,0],
+                            [0,0,0,1]])
+
+
+        self.R = np.array([[-1,0,0,0],
+                           [0,0,1,0],
+                           [0,1,0,0],
+                           [0,0,0,1]])
+        
+        self.T = np.dot(self.Tx, self.R)
 
     def callback_test(self, request):
         self.handle_test()
@@ -61,7 +77,6 @@ class Eval:
         z = odom_msg.pose.pose.position.z
         self.positions_est.append((x, y, z))
 
-
     def vicon_callback(self, msg):
         # update current position
         try:
@@ -71,18 +86,6 @@ class Eval:
             
         except: 
             rospy.loginfo('vicon callback error - no data')
-
-
-    def tag_callback(self, msg):
-        try:
-            self.detection = msg.detections
-            self.tagId_array = self.detection.id #int32[]
-            self.tagSize_array = self.detection.size #float64[]
-            self.tagConvariance = self.detection.pose.pose.covariance #float64[36]
-            self.tagPose = self.detection.pose.pose.pose #geometry_msgs/Pose.msg  
-        except: 
-            rospy.loginfo('apriltag detection callback error - no data')
-
 
     def callback_waypoints(self, pose_array_msg):
         if self.waypoint_saved == False:
@@ -95,6 +98,21 @@ class Eval:
                 # Append [x, y, z] to the positions list
                 self.positions_waypoints.append([x, y, z])
                 self.waypoint_saved = True
+
+    def tagPose_callback(self, msg):
+        try:
+            tagId = msg.id[0]
+            pose = msg.pose.pose.pose.position
+            x = pose.x
+            y = pose.y
+            z = pose.z
+            est = np.array([x,y,z])
+            gt = self.tagGT[tagId-2]
+            error = np.sqrt(np.sum(np.square(est - gt)))
+
+            rospy.loginfo(f'For the tag id {tagId}, the error is {error} meters')
+        except: 
+            rospy.loginfo('tag position callback error - no data')
 
 
     def plot(self, vicon=False, waypoints=True, estimate=True):
